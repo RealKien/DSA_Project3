@@ -34,13 +34,12 @@ public:
 		string line;
 		string token;
 		bool flag = false;
-		// int counter = 1; Use for debugging, counter < 200 for fast debugging
-		while (getline(file, line)) {  // Start reading
+		int counter = 1; //Use for debugging, counter < 200 for fast debugging
+		while (getline(file, line), counter++ < 1000) {  // Start reading
 			flag = false;
 			Movie movie; 
 			getline(file, line, ',');  // Read ID
 			movie.ID = line;
-			cout << "Counter: " << counter++ << movie.ID << endl;
 			getline(file, movie.title, ',');  // Read title
 			while (!flag) {  // Edge case if title contains commas
 
@@ -73,7 +72,7 @@ public:
 			}
 			// Add to containers to prepare graph creating
 			movieContainer.push_back(movie);
-			movieIDs.push_back(movie.ID);
+			movieIDs.push_back(movie.title);
 			movieNameEmbeddings.push_back(movie.title_embedding);
 			
 		}
@@ -93,7 +92,7 @@ public:
 			mag2 += vec2[i] * vec2[i];
 		}
 		if (mag1 == 0 || mag2 == 0) return -1; // Error
-		return dotProduct / (sqrt(mag1) * sqrt(mag2));
+		return (dotProduct / (sqrt(mag1) * sqrt(mag2)));
 	}
 
 	void CreateGraph() {  // Adjacency Matrix
@@ -126,6 +125,11 @@ public:
 			cout << "Year of release: " << movie.year_released << endl;
 			cout << "Duration: " << movie.runtime << endl;
 			cout << "Genre: " << movie.genre << endl;
+			cout << "Similarity: " << endl;
+			for (auto adjacent : WeightedGraph[token.first]) {
+				pair<string, double> temp = adjacent;
+				cout << adjacent.first << " " << adjacent.second << endl;
+			}
 			cout << endl;
 			// For debugging
 			if (counter > 10) break;
