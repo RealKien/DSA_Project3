@@ -39,7 +39,7 @@ public:
 		string token;
 		bool flag = false;
 		int counter = 1; //Use for debugging, counter < 200 for fast debugging
-		while (getline(file, line) && counter++< 1000) {  // Start reading the first 1000 movies
+		while (getline(file, line) && counter++< 100) {  // Start reading the first 1000 movies
 			flag = false;
 			Movie movie;
 			if (getline(file, line, ',')) {
@@ -132,15 +132,15 @@ public:
 		cout << "Matching result: " << endl;
 		for (auto id: IDs) {
 			Movie movie = MovieGraph[id];
-			cout << counter << ". ";
+			cout << counter++ << ". ";
 			cout << "ID: " << movie.ID << endl;
 			cout << "Title: " << movie.title << endl;
 			cout << "Year of release: " << movie.year_released << endl;
 			cout << "Duration: " << movie.runtime << endl;
 			cout << "Genre: " << movie.genre << endl;
-			// Print top 10 first results
-			if (counter > 10) break;
-			counter++;
+			cout << endl;
+			
+			
 
 		}
 	}
@@ -154,52 +154,72 @@ public:
 		// Search by movie name: Linear Search until having 5 movies matching the search Term or iterating all graph
 		string startMovie = WeightedGraph.begin()->first;
 		s.push(startMovie);
-
-		while (!s.empty()) {
+		int counter = 1;
+		while (!s.empty() && result.size() <10) {
 			string currentID = s.top();
 			s.pop();
 			// mark visited
-			if (!visited[currentID]) {
-				visited[currentID] = true;
-			}
+			
+			cout << "Repeat" << counter++ << endl;
+		
 			// Search changes based on which criteria to search
 			switch (command) {
 			case (1):  // Search by movie ID
 				// Check search term in movie name
-				if (currentID.find(keyword) != string::npos) {  //true if match
+				if (currentID.find(keyword) != string::npos && !visited[currentID] && result.size() < 10) {  //true if match
 					result.push_back(currentID);
+					visited[currentID] = true;
 				}
+					
 				for (auto similarMovie : WeightedGraph[currentID]) {
-					if (similarMovie.first.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.8) {
+					
+					if (similarMovie.first.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
 						result.push_back(similarMovie.first);
 					}
+					// push unvisted
+					if (!visited[similarMovie.first]) {
+						s.push(similarMovie.first);
+					}
+					
 				}
 				break;
 			case (2):  // Search by genre
-				if (MovieGraph[currentID].genre.find(keyword) != string::npos) {
+				if (MovieGraph[currentID].genre.find(keyword) != string::npos && !visited[currentID] && result.size() < 10) {
 					result.push_back(currentID);
+					visited[currentID] = true;
 				}
 				for (auto similarMovie : WeightedGraph[currentID]) {
-					if (MovieGraph[similarMovie.first].genre.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.8) {
+					
+					if (MovieGraph[similarMovie.first].genre.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
 						result.push_back(similarMovie.first);
 					}
+					// push unvisted
+					if (!visited[similarMovie.first]) {
+						s.push(similarMovie.first);
+					}
+		
 				}
 				break;
 			case(3):  // Search by movie name
-				if (MovieGraph[currentID].title.find(keyword) != string::npos) {
+				if (MovieGraph[currentID].title.find(keyword) != string::npos && !visited[currentID] && result.size() < 10) {
 					result.push_back(currentID);
+					visited[currentID] = true;
 				}
 				for (auto similarMovie : WeightedGraph[currentID]) {
-					if (MovieGraph[similarMovie.first].title.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.8) {
-						result.push_back(similarMovie.first);
+					
+					if (MovieGraph[similarMovie.first].title.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
+						// push unvisted
+						if (!visited[similarMovie.first]) {
+							result.push_back(similarMovie.first);
+							s.push(similarMovie.first);
+						}
 					}
+					
+					
 				}
 				break;
 			}
-			// push unvisted
-			if (!visited[currentID]) {
-				s.push(currentID);
-			}
+			
 		}
 		return result;
 	}
@@ -213,6 +233,7 @@ public:
 		}
 		//Perform dfs
 		vector<string> matching = dfs(visited, keyword, command);
+		cout << "Searching for " << keyword << endl;
 		PrintResult(matching);
 	}
 };
