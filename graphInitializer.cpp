@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <cmath>
 #include <stack>
+#include <queue>
+#include <chrono>
 
 using namespace std;
 
@@ -22,14 +24,14 @@ struct Movie {
 class Graph {
 private:
 	unordered_map<string, Movie> MovieGraph;  // Graph contain all Movie's properties
-	unordered_map<string, unordered_map<string, double>> WeightedGraph;  // Graph contains Movies with vector embeddings
-	
+	unordered_map<string, unordered_map<string, double> > WeightedGraph;  // Graph contains Movies with vector embeddings
+
 	vector<string> movieIDs;
-	vector<vector<double>> movieNameEmbeddings;
+	vector<vector<double> > movieNameEmbeddings;
 	vector<Movie> movieContainer;
 public:
 	Graph() {};
-	unordered_map<string, unordered_map<string, double>> getWeightedGraph() { return WeightedGraph; };
+	unordered_map<string, unordered_map<string, double> > getWeightedGraph() { return WeightedGraph; };
 	unordered_map<string, Movie> getMovieGraph() { return MovieGraph; }
 	void ReadFile() {
 		ifstream file("./imdb_movies_with_embeddings.csv");
@@ -39,13 +41,13 @@ public:
 		string token;
 		bool flag = false;
 		int counter = 1; //Use for debugging, counter < 200 for fast debugging
-		while (getline(file, line) && counter++< 100) {  // Start reading the first 1000 movies
+		while (getline(file, line) && counter++ < 10000) {  // Start reading the first 1000 movies
 			flag = false;
 			Movie movie;
 			if (getline(file, line, ',')) {
 				//getline(file, line, ',');  // Read ID
 				movie.ID = line;
-				
+
 				getline(file, movie.title, ',');  // Read title
 				while (!flag) {  // Edge case if title contains commas
 
@@ -64,12 +66,12 @@ public:
 					}
 					if (flag) { break; }  // Break to read the correct year
 				}
-				
+
 				getline(file, movie.runtime, ',');  // read runtime
 				getline(file, movie.genre, ',');   // read genre
 				// get vector embeddings string
 				if (getline(file, line, ']')) {
-					string temp = line.substr(2, line.size()-2);
+					string temp = line.substr(2, line.size() - 2);
 					istringstream  iss2(temp);
 					double value;
 					while (iss2 >> value) {  //stream each value to vector
@@ -95,7 +97,7 @@ public:
 		double mag1 = 0.0;
 		double mag2 = 0.0;
 		for (
-			
+
 			auto i = 0; i < vec1.size(); i++) {
 			dotProduct += vec1[i] * vec2[i];
 			mag1 += vec1[i] * vec1[i];
@@ -106,31 +108,30 @@ public:
 	}
 
 	void CreateGraph() {  // Adjacency Matrix
-		int counter = 1;
 		//cout << "Length" << movieIDs.size() << endl;
 		for (size_t i = 0; i < movieIDs.size(); ++i) {
 			for (size_t j = i + 1; j < movieIDs.size(); ++j) {
-				
+
 				double similarity = cosineSimilarity(movieNameEmbeddings[i], movieNameEmbeddings[j]);  // Check for similarity
-				
+
 				if (similarity >= 0.5) { // 0.5 = threshold --> Add edges
 					WeightedGraph[movieIDs[i]][movieIDs[j]] = similarity;
 					WeightedGraph[movieIDs[j]][movieIDs[i]] = similarity;
 				}
 			}
-			
+
 			MovieGraph[movieIDs[i]] = movieContainer[i];  // Add to movie container
-			
+
 		}
-		
-		
+
+
 	}
 	// For debugging/ Printing later: Only print one by one
 	void PrintResult(vector<string> IDs) {
 		int counter = 1;
-		
+
 		cout << "Matching result: " << endl;
-		for (auto id: IDs) {
+		for (auto id : IDs) {
 			Movie movie = MovieGraph[id];
 			cout << counter++ << ". ";
 			cout << "ID: " << movie.ID << endl;
@@ -139,8 +140,8 @@ public:
 			cout << "Duration: " << movie.runtime << endl;
 			cout << "Genre: " << movie.genre << endl;
 			cout << endl;
-			
-			
+
+
 
 		}
 	}
@@ -155,13 +156,13 @@ public:
 		string startMovie = WeightedGraph.begin()->first;
 		s.push(startMovie);
 		int counter = 1;
-		while (!s.empty() && result.size() <10) {
+		while (!s.empty() && result.size() < 10) {
 			string currentID = s.top();
 			s.pop();
 			// mark visited
-			
-			cout << "Repeat" << counter++ << endl;
-		
+
+			cout << "Number of searches done: " << counter++ << endl;
+
 			// Search changes based on which criteria to search
 			switch (command) {
 			case (1):  // Search by movie ID
@@ -170,17 +171,19 @@ public:
 					result.push_back(currentID);
 					visited[currentID] = true;
 				}
-					
+
 				for (auto similarMovie : WeightedGraph[currentID]) {
-					
+
 					if (similarMovie.first.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
-						result.push_back(similarMovie.first);
+
+
+						// push unvisted
+						if (!visited[similarMovie.first]) {
+							result.push_back(similarMovie.first);
+							s.push(similarMovie.first);
+						}
 					}
-					// push unvisted
-					if (!visited[similarMovie.first]) {
-						s.push(similarMovie.first);
-					}
-					
+
 				}
 				break;
 			case (2):  // Search by genre
@@ -189,15 +192,17 @@ public:
 					visited[currentID] = true;
 				}
 				for (auto similarMovie : WeightedGraph[currentID]) {
-					
+
 					if (MovieGraph[similarMovie.first].genre.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
-						result.push_back(similarMovie.first);
+
+
+						// push unvisted
+						if (!visited[similarMovie.first]) {
+							result.push_back(similarMovie.first);
+							s.push(similarMovie.first);
+						}
 					}
-					// push unvisted
-					if (!visited[similarMovie.first]) {
-						s.push(similarMovie.first);
-					}
-		
+
 				}
 				break;
 			case(3):  // Search by movie name
@@ -206,7 +211,7 @@ public:
 					visited[currentID] = true;
 				}
 				for (auto similarMovie : WeightedGraph[currentID]) {
-					
+
 					if (MovieGraph[similarMovie.first].title.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
 						// push unvisted
 						if (!visited[similarMovie.first]) {
@@ -214,12 +219,12 @@ public:
 							s.push(similarMovie.first);
 						}
 					}
-					
-					
+
+
 				}
 				break;
 			}
-			
+
 		}
 		return result;
 	}
@@ -231,11 +236,115 @@ public:
 		for (auto ID : WeightedGraph) {
 			visited[ID.first] = false;
 		}
+		auto start_time = chrono::high_resolution_clock::now();  // Record the start time
 		//Perform dfs
-		vector<string> matching = dfs(visited, keyword, command);
 		cout << "Searching for " << keyword << endl;
+		vector<string> matching = dfs(visited, keyword, command);
+		auto end_time = chrono::high_resolution_clock::now();  // Record the end time
+
+        auto elapsed_time = chrono::duration_cast<chrono::microseconds>(end_time - start_time);
+		cout << "DFS Total Elapsed time: " << elapsed_time.count() << " microseconds" << endl;
+		PrintResult(matching);
+	}
+
+	//Criteria: 1 - By movie name, 2 - By genre, 3 - By rating, 4 - By description 
+	vector<string> bfs(unordered_map<string, bool>& visited, string keyword, int command) {
+
+		// Create stack and pick first node
+		queue<string> s;
+		vector<string> result;
+		// Search by movie name: Linear Search until having 5 movies matching the search Term or iterating all graph
+		string startMovie = WeightedGraph.begin()->first;
+		s.push(startMovie);
+		int counter = 1;
+		while (!s.empty() && result.size() < 10) {
+			string currentID = s.front();
+			s.pop();
+			// mark visited
+
+			cout << "Number of searches done: " << counter++ << endl;
+
+			// Search changes based on which criteria to search
+			switch (command) {
+			case (1):  // Search by movie ID
+				// Check search term in movie name
+				if (currentID.find(keyword) != string::npos && !visited[currentID] && result.size() < 10) {  //true if match
+					result.push_back(currentID);
+					visited[currentID] = true;
+				}
+
+				for (auto similarMovie : WeightedGraph[currentID]) {
+
+					if (similarMovie.first.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
+
+
+						// push unvisted
+						if (!visited[similarMovie.first]) {
+							result.push_back(similarMovie.first);
+							s.push(similarMovie.first);
+						}
+					}
+
+				}
+				break;
+			case (2):  // Search by genre
+				if (MovieGraph[currentID].genre.find(keyword) != string::npos && !visited[currentID] && result.size() < 10) {
+					result.push_back(currentID);
+					visited[currentID] = true;
+				}
+				for (auto similarMovie : WeightedGraph[currentID]) {
+
+					if (MovieGraph[similarMovie.first].genre.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
+
+
+						// push unvisted
+						if (!visited[similarMovie.first]) {
+							result.push_back(similarMovie.first);
+							s.push(similarMovie.first);
+						}
+					}
+
+				}
+				break;
+			case(3):  // Search by movie name
+				if (MovieGraph[currentID].title.find(keyword) != string::npos && !visited[currentID] && result.size() < 10) {
+					result.push_back(currentID);
+					visited[currentID] = true;
+				}
+				for (auto similarMovie : WeightedGraph[currentID]) {
+
+					if (MovieGraph[similarMovie.first].title.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
+						// push unvisted
+						if (!visited[similarMovie.first]) {
+							result.push_back(similarMovie.first);
+							s.push(similarMovie.first);
+						}
+					}
+
+
+				}
+				break;
+			}
+
+		}
+		return result;
+	}
+
+	void bfsSearch(string keyword, int command) {
+		unordered_map<string, bool> visited;
+		// Initialize visited
+		int v = WeightedGraph.size();
+		for (auto ID : WeightedGraph) {
+			visited[ID.first] = false;
+		}
+		auto start_time = chrono::high_resolution_clock::now();  // Record the start time
+		//Perform dfs
+		cout << "Searching for " << keyword << endl;
+		vector<string> matching = bfs(visited, keyword, command);
+		auto end_time = chrono::high_resolution_clock::now();  // Record the end time
+
+        auto elapsed_time = chrono::duration_cast<chrono::microseconds>(end_time - start_time);
+		cout << "BFS Total Elapsed time: " << elapsed_time.count() << " microseconds" << endl;
 		PrintResult(matching);
 	}
 };
-
-
