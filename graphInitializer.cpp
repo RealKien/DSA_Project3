@@ -5,6 +5,8 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <cmath>
+#include <stack>
 
 using namespace std;
 
@@ -27,6 +29,8 @@ private:
 	vector<Movie> movieContainer;
 public:
 	Graph() {};
+	unordered_map<string, unordered_map<string, double>> getWeightedGraph() { return WeightedGraph; };
+	unordered_map<string, Movie> getMovieGraph() { return MovieGraph; }
 	void ReadFile() {
 		ifstream file("./imdb_movies_with_embeddings.csv");
 		if (!file.is_open()) cout << "Error opening file! " << endl;
@@ -35,46 +39,50 @@ public:
 		string token;
 		bool flag = false;
 		int counter = 1; //Use for debugging, counter < 200 for fast debugging
-		while (getline(file, line), counter++ < 1000) {  // Start reading
+		while (getline(file, line) && counter++< 1000) {  // Start reading the first 1000 movies
 			flag = false;
-			Movie movie; 
-			getline(file, line, ',');  // Read ID
-			movie.ID = line;
-			getline(file, movie.title, ',');  // Read title
-			while (!flag) {  // Edge case if title contains commas
+			Movie movie;
+			if (getline(file, line, ',')) {
+				//getline(file, line, ',');  // Read ID
+				movie.ID = line;
+				
+				getline(file, movie.title, ',');  // Read title
+				while (!flag) {  // Edge case if title contains commas
 
-				flag = true;
-				if (getline(file, token, ',')) {
-					for (char character : token) {
+					flag = true;
+					if (getline(file, token, ',')) {
+						for (char character : token) {
 
-						if (token == "\\N") { movie.year_released += token; break; }  // Edge case if year is unknown
-						else if (character < 48 || character > 57 || token[0] == '0') {  // Check if year contains letters
-							flag = false; movie.title += token;  break;  // Add the rest to the title
-						}
-						else {
-							movie.year_released += character;
+							if (token == "\\N") { movie.year_released += token; break; }  // Edge case if year is unknown
+							else if (character < 48 || character > 57 || token[0] == '0') {  // Check if year contains letters
+								flag = false; movie.title += token;  break;  // Add the rest to the title
+							}
+							else {
+								movie.year_released += character;
+							}
 						}
 					}
+					if (flag) { break; }  // Break to read the correct year
 				}
-				if (flag) { break; }  // Break to read the correct year
-			}
-
-			getline(file, movie.runtime, ',');  // read runtime
-			getline(file, movie.genre, ',');   // read genre
-			// get vector embeddings string
-			getline(file, line, ']');
-			string temp = line.substr(2, line.size());
-			istringstream  iss2(temp);
-			double value;
-			while (iss2 >> value) {  //stream each value to vector
 				
-				movie.title_embedding.push_back(value);
+				getline(file, movie.runtime, ',');  // read runtime
+				getline(file, movie.genre, ',');   // read genre
+				// get vector embeddings string
+				if (getline(file, line, ']')) {
+					string temp = line.substr(2, line.size()-2);
+					istringstream  iss2(temp);
+					double value;
+					while (iss2 >> value) {  //stream each value to vector
+
+						movie.title_embedding.push_back(value);
+					}
+				}
+				//for (auto i : movie.title_embedding) cout << i << " " << endl;
+				// Add to containers to prepare graph creating
+				movieContainer.push_back(movie);
+				movieIDs.push_back(movie.ID);
+				movieNameEmbeddings.push_back(movie.title_embedding);
 			}
-			// Add to containers to prepare graph creating
-			movieContainer.push_back(movie);
-			movieIDs.push_back(movie.title);
-			movieNameEmbeddings.push_back(movie.title_embedding);
-			
 		}
 		file.close();
 		cout << "End of reading" << endl;
@@ -86,7 +94,9 @@ public:
 		double dotProduct = 0.0;
 		double mag1 = 0.0;
 		double mag2 = 0.0;
-		for (auto i = 0; i < vec1.size(); i++) {
+		for (
+			
+			auto i = 0; i < vec1.size(); i++) {
 			dotProduct += vec1[i] * vec2[i];
 			mag1 += vec1[i] * vec1[i];
 			mag2 += vec2[i] * vec2[i];
@@ -97,7 +107,7 @@ public:
 
 	void CreateGraph() {  // Adjacency Matrix
 		int counter = 1;
-		cout << "Length" << movieIDs.size() << endl;
+		//cout << "Length" << movieIDs.size() << endl;
 		for (size_t i = 0; i < movieIDs.size(); ++i) {
 			for (size_t j = i + 1; j < movieIDs.size(); ++j) {
 				
@@ -116,33 +126,95 @@ public:
 		
 	}
 	// For debugging/ Printing later: Only print one by one
-	void PrintGraph() {
+	void PrintResult(vector<string> IDs) {
 		int counter = 1;
-		for (auto token: MovieGraph) {
-			Movie movie = token.second;
+		
+		cout << "Matching result: " << endl;
+		for (auto id: IDs) {
+			Movie movie = MovieGraph[id];
+			cout << counter << ". ";
 			cout << "ID: " << movie.ID << endl;
 			cout << "Title: " << movie.title << endl;
 			cout << "Year of release: " << movie.year_released << endl;
 			cout << "Duration: " << movie.runtime << endl;
 			cout << "Genre: " << movie.genre << endl;
-			cout << "Similarity: " << endl;
-			for (auto adjacent : WeightedGraph[token.first]) {
-				pair<string, double> temp = adjacent;
-				cout << adjacent.first << " " << adjacent.second << endl;
-			}
-			cout << endl;
-			// For debugging
+			// Print top 10 first results
 			if (counter > 10) break;
 			counter++;
 
 		}
 	}
+
+	//Criteria: 1 - By movie name, 2 - By genre, 3 - By rating, 4 - By description 
+	vector<string> dfs(unordered_map<string, bool>& visited, string keyword, int command) {
+
+		// Create stack and pick first node
+		stack<string> s;
+		vector<string> result;
+		// Search by movie name: Linear Search until having 5 movies matching the search Term or iterating all graph
+		string startMovie = WeightedGraph.begin()->first;
+		s.push(startMovie);
+
+		while (!s.empty()) {
+			string currentID = s.top();
+			s.pop();
+			// mark visited
+			if (!visited[currentID]) {
+				visited[currentID] = true;
+			}
+			// Search changes based on which criteria to search
+			switch (command) {
+			case (1):  // Search by movie ID
+				// Check search term in movie name
+				if (currentID.find(keyword) != string::npos) {  //true if match
+					result.push_back(currentID);
+				}
+				for (auto similarMovie : WeightedGraph[currentID]) {
+					if (similarMovie.first.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.8) {
+						result.push_back(similarMovie.first);
+					}
+				}
+				break;
+			case (2):  // Search by genre
+				if (MovieGraph[currentID].genre.find(keyword) != string::npos) {
+					result.push_back(currentID);
+				}
+				for (auto similarMovie : WeightedGraph[currentID]) {
+					if (MovieGraph[similarMovie.first].genre.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.8) {
+						result.push_back(similarMovie.first);
+					}
+				}
+				break;
+			case(3):  // Search by movie name
+				if (MovieGraph[currentID].title.find(keyword) != string::npos) {
+					result.push_back(currentID);
+				}
+				for (auto similarMovie : WeightedGraph[currentID]) {
+					if (MovieGraph[similarMovie.first].title.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.8) {
+						result.push_back(similarMovie.first);
+					}
+				}
+				break;
+			}
+			// push unvisted
+			if (!visited[currentID]) {
+				s.push(currentID);
+			}
+		}
+		return result;
+	}
+
+	void dfsSearch(string keyword, int command) {
+		unordered_map<string, bool> visited;
+		// Initialize visited
+		int v = WeightedGraph.size();
+		for (auto ID : WeightedGraph) {
+			visited[ID.first] = false;
+		}
+		//Perform dfs
+		vector<string> matching = dfs(visited, keyword, command);
+		PrintResult(matching);
+	}
 };
-// Simple main
-int main() {
-	Graph movie;
-	movie.ReadFile();
-	movie.CreateGraph();
-	movie.PrintGraph();
-}
+
 
