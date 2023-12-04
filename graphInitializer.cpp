@@ -9,6 +9,7 @@
 #include <stack>
 #include <queue>
 #include <iomanip>
+#include <chrono>
 
 using namespace std;
 
@@ -42,7 +43,7 @@ public:
 		string token;
 		bool flag = false;
 		int counter = 1;
-		while (getline(file, line) && counter++ < 1500) {  // Start reading the first 1500 movies ~ 600k edges
+		while (getline(file, line) && counter++ < 2000) {  // Start reading the first 1500 movies ~ 600k edges
 			flag = false;
 			Movie movie;
 			if (getline(file, line, ',')) {
@@ -343,8 +344,20 @@ public:
 		}
 		//Perform dfs
 		cout << "Matching using dfs..." << setw(35) << "|  " << "Matching using bfs..." << setw(24) << endl;  // Header
+		auto start_time = chrono::high_resolution_clock::now();
 		vector<string> matchingdfs = dfs(visiteddfs, keyword, command);  // Perform dfs
+		auto end_time = chrono::high_resolution_clock::now();  // Record the end time
+		auto elapsed_time_dfs = chrono::duration_cast<chrono::microseconds>(end_time - start_time);
+		
+		start_time = chrono::high_resolution_clock::now();
+		
 		vector<string> matchingbfs = bfs(visitedbfs, keyword, command);  // Perform bfs
+		end_time = chrono::high_resolution_clock::now();  // Record the end time
+		auto elapsed_time_bfs = chrono::duration_cast<chrono::microseconds>(end_time - start_time);
+		int  time_dfs = elapsed_time_dfs.count();
+		int time_bfs = elapsed_time_bfs.count();
+
+		cout << "DFS Total Elapsed time: " << time_dfs << " microseconds" << setw(19 - to_string(time_dfs).length()) << "|  " << "BFS Total Elapsed time: " << time_bfs << " microseconds" << endl;
 		if (matchingdfs.size() == 0) cout << "No matching result!" << endl;
 		PrintResult(matchingdfs, matchingbfs);  // Print result
 		
