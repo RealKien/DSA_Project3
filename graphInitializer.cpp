@@ -8,7 +8,7 @@
 #include <cmath>
 #include <stack>
 #include <queue>
-#include <chrono>
+#include <iomanip>
 
 using namespace std;
 
@@ -24,14 +24,15 @@ struct Movie {
 class Graph {
 private:
 	unordered_map<string, Movie> MovieGraph;  // Graph contain all Movie's properties
-	unordered_map<string, unordered_map<string, double> > WeightedGraph;  // Graph contains Movies with vector embeddings
+	unordered_map<string, unordered_map<string, double>> WeightedGraph;  // Graph contains Movies with vector embeddings
+	
 
 	vector<string> movieIDs;
-	vector<vector<double> > movieNameEmbeddings;
+	vector<vector<double>> movieNameEmbeddings;
 	vector<Movie> movieContainer;
 public:
 	Graph() {};
-	unordered_map<string, unordered_map<string, double> > getWeightedGraph() { return WeightedGraph; };
+	unordered_map<string, unordered_map<string, double>> getWeightedGraph() { return WeightedGraph; };
 	unordered_map<string, Movie> getMovieGraph() { return MovieGraph; }
 	void ReadFile() {
 		ifstream file("./imdb_movies_with_embeddings.csv");
@@ -40,8 +41,8 @@ public:
 		string line;
 		string token;
 		bool flag = false;
-		int counter = 1; //Use for debugging, counter < 200 for fast debugging
-		while (getline(file, line) && counter++ < 10000) {  // Start reading the first 1000 movies
+		int counter = 1;
+		while (getline(file, line) && counter++ < 1500) {  // Start reading the first 1500 movies ~ 600k edges
 			flag = false;
 			Movie movie;
 			if (getline(file, line, ',')) {
@@ -87,8 +88,8 @@ public:
 			}
 		}
 		file.close();
-		cout << "End of reading" << endl;
 	}
+
 	// Helper function to determine the similarity of two movies
 	// cos = v1 dot v2 / (v1 * v2)
 	double cosineSimilarity(vector<double>& vec1, vector<double>& vec2) {
@@ -108,6 +109,7 @@ public:
 	}
 
 	void CreateGraph() {  // Adjacency Matrix
+		int counter = 1;
 		//cout << "Length" << movieIDs.size() << endl;
 		for (size_t i = 0; i < movieIDs.size(); ++i) {
 			for (size_t j = i + 1; j < movieIDs.size(); ++j) {
@@ -127,224 +129,224 @@ public:
 
 	}
 	// For debugging/ Printing later: Only print one by one
-	void PrintResult(vector<string> IDs) {
-		int counter = 1;
+	void PrintResult(vector<string> dfs, vector<string> bfs) {
+		
+		
+		cout << string(30 * 3, '-') << endl;
+		for (int counter = 1; counter <= dfs.size(); counter++) {
+			Movie moviedfs = MovieGraph[dfs[counter-1]];
+			Movie moviebfs = MovieGraph[bfs[counter-1]];
+			cout << "ID:            " << moviedfs.ID << setw(41-moviedfs.ID.length()) << "|  "  <<  moviebfs.ID << endl;
+			// If dfs & bfs name too long
+			if (moviedfs.title.length() >= 30 && moviebfs.title.length() >= 30) {
+				cout << "Title:         " << moviedfs.title.substr(0, 30) << "..." << setw(8) << "|  " << moviebfs.title.substr(0, 30) << "..." << endl;
+			}
+			// if dfs name too long
+			else if (moviedfs.title.length() >= 30){
+				cout << "Title:         " << moviedfs.title.substr(0, 30) << "..." << setw(8) << "|  " << moviebfs.title << endl;
+			}
+			// If bfs name too long
+			if (moviebfs.title.length() >= 30) {
+				cout << "Title:         " << moviedfs.title << setw(41 - moviedfs.title.length()) << "|  " << moviebfs.title.substr(0, 30) << "..." << endl;
+			}
+			else {
+				cout << "Title:         " << moviedfs.title << setw(41 - moviedfs.title.length()) << "|  " << moviebfs.title << endl;
+			}
 
-		cout << "Matching result: " << endl;
-		for (auto id : IDs) {
-			Movie movie = MovieGraph[id];
-			cout << counter++ << ". ";
-			cout << "ID: " << movie.ID << endl;
-			cout << "Title: " << movie.title << endl;
-			cout << "Year of release: " << movie.year_released << endl;
-			cout << "Duration: " << movie.runtime << endl;
-			cout << "Genre: " << movie.genre << endl;
+			cout << "Release year:  "  << moviedfs.year_released << setw(41 - moviedfs.year_released.length()) << "|  " << moviebfs.year_released << endl;
+			cout << "Duration:      " << moviedfs.runtime << setw(41 - moviedfs.runtime.length()) << "|  " << moviebfs.runtime << endl;
+			cout << "Genre:         " << moviedfs.genre << setw(41 - moviedfs.genre.length()) << "|  " << moviebfs.genre << endl;
 			cout << endl;
-
-
 
 		}
 	}
 
-	//Criteria: 1 - By movie name, 2 - By genre, 3 - By rating, 4 - By description 
+	//Criteria: 1 - By ID, 2 - By genre, 3 - By name
+	// Maximum return results is 10
+	// dfs algorithm
 	vector<string> dfs(unordered_map<string, bool>& visited, string keyword, int command) {
-
 		// Create stack and pick first node
 		stack<string> s;
 		vector<string> result;
+		int keyLength = keyword.length();
 		// Search by movie name: Linear Search until having 5 movies matching the search Term or iterating all graph
 		string startMovie = WeightedGraph.begin()->first;
 		s.push(startMovie);
 		int counter = 1;
+
 		while (!s.empty() && result.size() < 10) {
 			string currentID = s.top();
 			s.pop();
-			// mark visited
 
-			cout << "Number of searches done: " << counter++ << endl;
+			counter++;
 
 			// Search changes based on which criteria to search
 			switch (command) {
 			case (1):  // Search by movie ID
 				// Check search term in movie name
-				if (currentID.find(keyword) != string::npos && !visited[currentID] && result.size() < 10) {  //true if match
-					result.push_back(currentID);
-					visited[currentID] = true;
-				}
-
-				for (auto similarMovie : WeightedGraph[currentID]) {
-
-					if (similarMovie.first.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
-
-
-						// push unvisted
-						if (!visited[similarMovie.first]) {
-							result.push_back(similarMovie.first);
-							s.push(similarMovie.first);
+				if (!visited[currentID]) {
+					for(int i = 0; i < keyLength/2; i++) {  // If part of the keyword match the criteria --> still recommend
+						if (currentID.find(keyword.substr(i, keyLength - i)) != string::npos && !visited[currentID] && result.size() < 10) {  //true if match
+							result.push_back(currentID);
+							break;
 						}
 					}
-
+					visited[currentID] = true;  // mark visited
+					for (auto similarMovie : WeightedGraph[currentID]) {
+						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
+							// push unvisted similar movies
+							if (!visited[similarMovie.first]) {
+								s.push(similarMovie.first);
+							}
+						}
+					}
 				}
 				break;
 			case (2):  // Search by genre
-				if (MovieGraph[currentID].genre.find(keyword) != string::npos && !visited[currentID] && result.size() < 10) {
-					result.push_back(currentID);
-					visited[currentID] = true;
-				}
-				for (auto similarMovie : WeightedGraph[currentID]) {
-
-					if (MovieGraph[similarMovie.first].genre.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
-
-
-						// push unvisted
-						if (!visited[similarMovie.first]) {
-							result.push_back(similarMovie.first);
-							s.push(similarMovie.first);
+				if (!visited[currentID]) {
+					// If genre matches
+					for(int i = 0; i < keyLength/2; i++) {  // If part of the keyword match the criteria --> still recommend
+						if (MovieGraph[currentID].genre.find(keyword.substr(i, keyLength - i)) != string::npos && !visited[currentID] && result.size() < 10) {
+							result.push_back(currentID);
+							break;
 						}
 					}
-
+					visited[currentID] = true;  // mark visited
+					for (auto similarMovie : WeightedGraph[currentID]) {
+						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
+							// push unvisted similar movies
+							if (!visited[similarMovie.first]) {
+								s.push(similarMovie.first);
+							}
+						}
+					}
 				}
 				break;
 			case(3):  // Search by movie name
-				if (MovieGraph[currentID].title.find(keyword) != string::npos && !visited[currentID] && result.size() < 10) {
-					result.push_back(currentID);
-					visited[currentID] = true;
-				}
-				for (auto similarMovie : WeightedGraph[currentID]) {
-
-					if (MovieGraph[similarMovie.first].title.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
-						// push unvisted
-						if (!visited[similarMovie.first]) {
-							result.push_back(similarMovie.first);
-							s.push(similarMovie.first);
+				if (!visited[currentID]) {
+					for(int i = 0; i < keyLength/2; i++) {  // If part of the keyword match the criteria --> still recommend
+						if (MovieGraph[currentID].title.find(keyword.substr(i, keyLength - i)) != string::npos && result.size() < 10) {
+							result.push_back(currentID);
+							break;
 						}
 					}
+					visited[currentID] = true;// mark visited
+					for (auto similarMovie : WeightedGraph[currentID]) {
 
-
+						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
+							// push unvisted similar movies
+							if (!visited[similarMovie.first]) {						
+								s.push(similarMovie.first);
+							}
+						}
+					}
 				}
 				break;
 			}
 
 		}
+		cout << "Number of searches done:" << counter << setw(32 - to_string(counter).length()) << "|  ";  // Print the number of calling dfs
 		return result;
 	}
 
-	void dfsSearch(string keyword, int command) {
-		unordered_map<string, bool> visited;
-		// Initialize visited
-		int v = WeightedGraph.size();
-		for (auto ID : WeightedGraph) {
-			visited[ID.first] = false;
-		}
-		auto start_time = chrono::high_resolution_clock::now();  // Record the start time
-		//Perform dfs
-		cout << "Searching for " << keyword << endl;
-		vector<string> matching = dfs(visited, keyword, command);
-		auto end_time = chrono::high_resolution_clock::now();  // Record the end time
-
-        auto elapsed_time = chrono::duration_cast<chrono::microseconds>(end_time - start_time);
-		cout << "DFS Total Elapsed time: " << elapsed_time.count() << " microseconds" << endl;
-		PrintResult(matching);
-	}
-
-	//Criteria: 1 - By movie name, 2 - By genre, 3 - By rating, 4 - By description 
+	
+	//Criteria: 1 - By ID, 2 - By genre, 3 - By name
+	// Maximum return result is 10
 	vector<string> bfs(unordered_map<string, bool>& visited, string keyword, int command) {
-
+		int keyLength = keyword.length();
 		// Create stack and pick first node
-		queue<string> s;
+		queue<string> q;
 		vector<string> result;
 		// Search by movie name: Linear Search until having 5 movies matching the search Term or iterating all graph
 		string startMovie = WeightedGraph.begin()->first;
-		s.push(startMovie);
+		q.push(startMovie);
 		int counter = 1;
-		while (!s.empty() && result.size() < 10) {
-			string currentID = s.front();
-			s.pop();
-			// mark visited
-
-			cout << "Number of searches done: " << counter++ << endl;
-
+		while (!q.empty() && result.size() < 10) {
+			string currentID = q.front();
+			q.pop();
+			counter++;
 			// Search changes based on which criteria to search
 			switch (command) {
 			case (1):  // Search by movie ID
 				// Check search term in movie name
-				if (currentID.find(keyword) != string::npos && !visited[currentID] && result.size() < 10) {  //true if match
-					result.push_back(currentID);
-					visited[currentID] = true;
-				}
-
-				for (auto similarMovie : WeightedGraph[currentID]) {
-
-					if (similarMovie.first.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
-
-
-						// push unvisted
-						if (!visited[similarMovie.first]) {
-							result.push_back(similarMovie.first);
-							s.push(similarMovie.first);
+				if (!visited[currentID]) {
+					for(int i = 0; i < keyLength/2; i++) {  // If part of the keyword match the criteria --> still recommend
+						if (currentID.find(keyword.substr(i, keyLength - i)) != string::npos && !visited[currentID] && result.size() < 10) {  //true if match
+							result.push_back(currentID);
+							break;
 						}
 					}
-
+					visited[currentID] = true;  // mark visited
+					for (auto similarMovie : WeightedGraph[currentID]) {
+						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
+							// push unvisted similar movies
+							if (!visited[similarMovie.first]) {							
+								q.push(similarMovie.first);
+							}
+						}
+					}
 				}
 				break;
 			case (2):  // Search by genre
-				if (MovieGraph[currentID].genre.find(keyword) != string::npos && !visited[currentID] && result.size() < 10) {
-					result.push_back(currentID);
-					visited[currentID] = true;
-				}
-				for (auto similarMovie : WeightedGraph[currentID]) {
-
-					if (MovieGraph[similarMovie.first].genre.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
-
-
-						// push unvisted
-						if (!visited[similarMovie.first]) {
-							result.push_back(similarMovie.first);
-							s.push(similarMovie.first);
+				if (!visited[currentID]) {
+					for(int i = 0; i < keyLength/2; i++) {  // If part of the keyword match the criteria --> still recommend
+						if (MovieGraph[currentID].genre.find(keyword.substr(i, keyLength - i)) != string::npos && !visited[currentID] && result.size() < 10) {
+							result.push_back(currentID);
+							break;
 						}
 					}
-
+					visited[currentID] = true;  // mark visited
+					for (auto similarMovie : WeightedGraph[currentID]) {
+						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
+							// push unvisted similar movies
+							if (!visited[similarMovie.first]) {
+								q.push(similarMovie.first);
+							}
+						}
+					}
 				}
 				break;
 			case(3):  // Search by movie name
-				if (MovieGraph[currentID].title.find(keyword) != string::npos && !visited[currentID] && result.size() < 10) {
-					result.push_back(currentID);
-					visited[currentID] = true;
-				}
-				for (auto similarMovie : WeightedGraph[currentID]) {
-
-					if (MovieGraph[similarMovie.first].title.find(keyword) != string::npos && WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
-						// push unvisted
-						if (!visited[similarMovie.first]) {
-							result.push_back(similarMovie.first);
-							s.push(similarMovie.first);
+				if (!visited[currentID]) {
+					
+					for(int i = 0; i < keyLength/2; i++) {  // If part of the keyword match the criteria --> still recommend
+						if (MovieGraph[currentID].title.find(keyword.substr(i, keyLength - i)) != string::npos && result.size() < 10) {  // If match
+							result.push_back(currentID);
+							break;
 						}
 					}
-
-
+					visited[currentID] = true;  // mark visited
+					for (auto similarMovie : WeightedGraph[currentID]) {
+						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && result.size() < 10) {
+							// push unvisted similar movies
+							if (!visited[similarMovie.first]) {
+								q.push(similarMovie.first);
+							}
+						}
+					}
 				}
 				break;
 			}
-
 		}
+		cout << "Number of searches done: " << counter << endl;  // Print the number of doing bfs
 		return result;
 	}
 
-	void bfsSearch(string keyword, int command) {
-		unordered_map<string, bool> visited;
+	void Search(string keyword, int command) {
+		unordered_map<string, bool> visiteddfs;
+		unordered_map<string, bool> visitedbfs;
 		// Initialize visited
 		int v = WeightedGraph.size();
 		for (auto ID : WeightedGraph) {
-			visited[ID.first] = false;
+			visitedbfs[ID.first] = false;
+			visiteddfs[ID.first] = false;
 		}
-		auto start_time = chrono::high_resolution_clock::now();  // Record the start time
 		//Perform dfs
-		cout << "Searching for " << keyword << endl;
-		vector<string> matching = bfs(visited, keyword, command);
-		auto end_time = chrono::high_resolution_clock::now();  // Record the end time
-
-        auto elapsed_time = chrono::duration_cast<chrono::microseconds>(end_time - start_time);
-		cout << "BFS Total Elapsed time: " << elapsed_time.count() << " microseconds" << endl;
-		PrintResult(matching);
+		cout << "Matching using dfs..." << setw(35) << "|  " << "Matching using bfs..." << setw(24) << endl;  // Header
+		vector<string> matchingdfs = dfs(visiteddfs, keyword, command);  // Perform dfs
+		vector<string> matchingbfs = bfs(visitedbfs, keyword, command);  // Perform bfs
+		if (matchingdfs.size() == 0) cout << "No matching result!" << endl;
+		PrintResult(matchingdfs, matchingbfs);  // Print result
+		
 	}
 };
