@@ -27,13 +27,10 @@ private:
 	unordered_map<string, Movie> MovieGraph;  // Graph contain all Movie's properties
 	unordered_map<string, unordered_map<string, double>> WeightedGraph;  // Graph contains Movies with vector embeddings
 	
-
 	vector<string> movieIDs;
 	vector<vector<double>> movieNameEmbeddings;
 	vector<Movie> movieContainer;
 
-	unordered_map<string, unordered_map<string, double>> getWeightedGraph() { return WeightedGraph; };
-	unordered_map<string, Movie> getMovieGraph() { return MovieGraph; }
 	void ReadFile() {
 		ifstream file("./imdb_movies_with_embeddings.csv");
 		if (!file.is_open()) cout << "Error opening file! " << endl;
