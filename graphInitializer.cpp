@@ -27,6 +27,7 @@ private:
 	unordered_map<string, Movie> MovieGraph;  // Graph contain all Movie's properties
 	unordered_map<string, unordered_map<string, double>> WeightedGraph;  // Graph contains Movies with vector embeddings
 	
+
 	vector<string> movieIDs;
 	vector<vector<double>> movieNameEmbeddings;
 	vector<Movie> movieContainer;
@@ -38,8 +39,8 @@ private:
 		string line;
 		string token;
 		bool flag = false;
-		int counter = 1;
-		while (getline(file, line) && counter++ < 2000) {  // Start reading the first 2000 movies ~ 1M edges
+		//int counter = 1; // For debugging
+		while (getline(file, line)) {  // Reading the first 2000 movies ~ 1M edges ~ 30s Graph Building
 			flag = false;
 			Movie movie;
 			if (getline(file, line, ',')) {
@@ -143,7 +144,7 @@ private:
 			case (1):  // Search by movie ID
 				// Check search term in movie name
 				if (!visited[currentID]) {
-					if (currentID.find(keyword) != string::npos && !visited[currentID] && matched < 10) {  // if key match completely
+					if (currentID.find(keyword) != string::npos && !visited[currentID] && matched <= 10) {  // if key match completely
 						result[keyword].push_back(currentID);
 						matched++;
 					}
@@ -158,7 +159,7 @@ private:
 					}
 					visited[currentID] = true;  // mark visited
 					for (auto similarMovie : WeightedGraph[currentID]) {
-						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && matched < 10) {
+						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && matched <= 10) {
 							// push unvisted similar movies
 							if (!visited[similarMovie.first]) {
 								s.push(similarMovie.first);
@@ -171,7 +172,7 @@ private:
 			case (2):  // Search by genre
 				if (!visited[currentID]) {
 					// If genre matches
-					if (MovieGraph[currentID].genre.find(keyword) != string::npos && !visited[currentID] && matched < 10) {  // if key match completely
+					if (MovieGraph[currentID].genre.find(keyword) != string::npos && !visited[currentID] && matched <= 10) {  // if key match completely
 						result[keyword].push_back(currentID);
 						matched++;
 					}
@@ -186,7 +187,7 @@ private:
 					}
 					visited[currentID] = true;  // mark visited
 					for (auto similarMovie : WeightedGraph[currentID]) {
-						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && matched < 10) {
+						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && matched <= 10) {
 							// push unvisted similar movies
 							if (!visited[similarMovie.first]) {
 								s.push(similarMovie.first);
@@ -198,7 +199,7 @@ private:
 
 			case(3):  // Search by movie name
 				if (!visited[currentID]) {
-					if (MovieGraph[currentID].title.find(keyword) != string::npos && !visited[currentID] && matched < 10) {  // if key match completely
+					if (MovieGraph[currentID].title.find(keyword) != string::npos && !visited[currentID] && matched <= 10) {  // if key match completely
 						result[keyword].push_back(currentID);
 						matched++;
 					}
@@ -214,7 +215,7 @@ private:
 					visited[currentID] = true;// mark visited
 					for (auto similarMovie : WeightedGraph[currentID]) {
 
-						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && matched < 10) {
+						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && matched <= 10) {
 							// push unvisted similar movies
 							if (!visited[similarMovie.first]) {
 								s.push(similarMovie.first);
@@ -251,7 +252,7 @@ private:
 			case (1):  // Search by movie ID
 				// Check search term in movie name
 				if (!visited[currentID]) {
-					if (currentID.find(keyword) != string::npos && !visited[currentID] && matched < 10) {  // if key match completely
+					if (currentID.find(keyword) != string::npos && !visited[currentID] && matched <= 10) {  // if key match completely
 						result[keyword].push_back(currentID);
 						matched++;
 					}
@@ -266,7 +267,7 @@ private:
 					}
 					visited[currentID] = true;  // mark visited
 					for (auto similarMovie : WeightedGraph[currentID]) {
-						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && matched < 10) {
+						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && matched <= 10) {
 							// push unvisted similar movies
 							if (!visited[similarMovie.first]) {
 								q.push(similarMovie.first);
@@ -278,7 +279,7 @@ private:
 
 			case (2):  // Search by genre
 				if (!visited[currentID]) {
-					if (MovieGraph[currentID].genre.find(keyword) != string::npos && !visited[currentID] && matched < 10) {  // if key match completely
+					if (MovieGraph[currentID].genre.find(keyword) != string::npos && !visited[currentID] && matched <= 10) {  // if key match completely
 						result[keyword].push_back(currentID);
 						matched++;
 					}
@@ -293,7 +294,7 @@ private:
 					}
 					visited[currentID] = true;  // mark visited
 					for (auto similarMovie : WeightedGraph[currentID]) {
-						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && matched < 10) {
+						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && matched <= 10) {
 							// push unvisted similar movies
 							if (!visited[similarMovie.first]) {
 								q.push(similarMovie.first);
@@ -305,7 +306,7 @@ private:
 
 			case(3):  // Search by movie name
 				if (!visited[currentID]) {
-					if (MovieGraph[currentID].title.find(keyword) != string::npos && !visited[currentID] && matched < 10) {  // if key match completely
+					if (MovieGraph[currentID].title.find(keyword) != string::npos && !visited[currentID] && matched <= 10) {  // if key match completely
 						result[keyword].push_back(currentID);
 						matched++;
 					}
@@ -320,7 +321,7 @@ private:
 					}
 					visited[currentID] = true;  // mark visited
 					for (auto similarMovie : WeightedGraph[currentID]) {
-						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && matched < 10) {
+						if (WeightedGraph[currentID][similarMovie.first] >= 0.9 && matched <= 10) {
 							// push unvisted similar movies
 							if (!visited[similarMovie.first]) {
 								q.push(similarMovie.first);
@@ -339,7 +340,7 @@ private:
 	void Print(vector<string> dfs, vector<string> bfs, int& order) {
 		
 		for (int i = 1; i < dfs.size() + 1; i++) {
-			if (order++ > 10) { break; }
+			if (order > 10) { break; }
 			Movie moviedfs = MovieGraph[dfs[i - 1]];
 			Movie moviebfs = MovieGraph[bfs[i - 1]];
 			cout << "ID:            " << moviedfs.ID << setw(41 - moviedfs.ID.length()) << "|  " << moviebfs.ID << endl;
@@ -363,6 +364,7 @@ private:
 			cout << "Duration:      " << moviedfs.runtime << setw(41 - moviedfs.runtime.length()) << "|  " << moviebfs.runtime << endl;
 			cout << "Genre:         " << moviedfs.genre << setw(41 - moviedfs.genre.length()) << "|  " << moviebfs.genre << endl;
 			cout << endl;
+			order++;
 		}
 		
 	}
