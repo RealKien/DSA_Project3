@@ -19,7 +19,7 @@ int main() {
 			cout << "Goodbye! " << endl;
 			break;
 		}
-		cout << "Recommender Menu" << endl << "Select a filter to search our dataset and we'll share our top 5 similar movies!" << endl;
+		cout << "Recommender Menu" << endl << "Select a filter to search our dataset and we'll share our top 10 similar movies!" << endl;
 		cout << "Type 1 to search by IMDB movie ID, 2 to search by genre, and 3 to search by movie name: ";
 		cin >> userSelectionNum;
 
